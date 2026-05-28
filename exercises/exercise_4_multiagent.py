@@ -28,7 +28,7 @@ class State(TypedDict):
     law_analysis: Annotated[str, _last_wins]
     tax_analysis: Annotated[str, _last_wins]
     compliance_analysis: Annotated[str, _last_wins]
-    privacy_analysis: Annotated[str, _last_wins]  # TODO: Thêm field mới
+    privacy_analysis: Annotated[str, _last_wins]
     final_response: str
 
 
@@ -56,7 +56,7 @@ def check_routing(state: State) -> list[Send]:
     if any(kw in question_lower for kw in ["compliance", "sec", "regulation"]):
         tasks.append(Send("compliance_agent", state))
 
-    if any(kw in question_lower for kw in ["data", "privacy", "gdpr", "dữ liệu", "rò rỉ", "breach"]):
+    if any(kw in question_lower for kw in ["data", "privacy", "gdpr", "dữ liệu", "rò rỉ"]):
         tasks.append(Send("privacy_agent", state))
 
     return tasks if tasks else [Send("aggregate_results", state)]
@@ -137,24 +137,24 @@ Hãy tạo một báo cáo ngắn gọn, có cấu trúc rõ ràng."""
 def build_graph() -> StateGraph:
     """Xây dựng multi-agent graph."""
     graph = StateGraph(State)
-    
-    # Add nodes
+
     graph.add_node("law_agent", law_agent)
-    graph.add_node("check_routing", check_routing)
     graph.add_node("tax_agent", tax_agent)
     graph.add_node("compliance_agent", compliance_agent)
     graph.add_node("privacy_agent", privacy_agent)
     graph.add_node("aggregate_results", aggregate_results)
-    
-    # Define edges
+
     graph.add_edge(START, "law_agent")
-    graph.add_edge("law_agent", "check_routing")
-    graph.add_conditional_edges("check_routing", lambda x: x)
+    graph.add_conditional_edges(
+        "law_agent",
+        check_routing,
+        ["tax_agent", "compliance_agent", "privacy_agent", "aggregate_results"],
+    )
     graph.add_edge("tax_agent", "aggregate_results")
     graph.add_edge("compliance_agent", "aggregate_results")
     graph.add_edge("privacy_agent", "aggregate_results")
     graph.add_edge("aggregate_results", END)
-    
+
     return graph.compile()
 
 
